@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,6 +43,12 @@ public class FileService {
                     fileRecord.setDuration(Integer.parseInt(data[2]));
                     blockingQueue.put(fileRecord);
                 }
+                if (blockingQueue.size() >= 200) {
+                        processBatch();
+                    }
+
+                // Process remaining records
+                processBatch();
                 // Add a marker to signal the end of the file
                 FileRecord markerFile = new FileRecord("0","0",0);
                 blockingQueue.put(markerFile);
@@ -68,5 +76,13 @@ public class FileService {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    private void processBatch() {
+        List<FileRecord> batch = new ArrayList<>();
+        blockingQueue.drainTo(batch, 200); // Drain up to 100 records from the queue
+        if (!batch.isEmpty()) {
+            fileRepository.saveAll(batch); // Bulk save
+        }
     }
 }
